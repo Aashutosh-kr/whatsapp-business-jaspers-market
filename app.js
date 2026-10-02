@@ -7,15 +7,16 @@
 
 "use strict";
 
-const crypto = require('crypto');
+const crypto = require("crypto");
 
-const { urlencoded, json } = require('body-parser');
-require('dotenv').config();
-const express = require('express');
+const { urlencoded, json } = require("body-parser");
+require("dotenv").config();
+const express = require("express");
 
-const config = require('./services/config');
-const Conversation = require('./services/conversation');
-const Message = require('./services/message');
+const config = require("./services/config");
+const Conversation = require("./services/conversation");
+const testRouter = require("./routes/test");
+
 const app = express();
 
 // Parse application/x-www-form-urlencoded
@@ -30,6 +31,8 @@ app.use(json({ verify: verifyRequestSignature }));
 
 // Handle webhook verification handshake
 app.get("/webhook", function (req, res) {
+  console.log(`🚀 ~ app.js:33 ~ req~`, req.query);
+
   if (
     req.query["hub.mode"] != "subscribe" ||
     req.query["hub.verify_token"] != config.verifyToken
@@ -42,8 +45,11 @@ app.get("/webhook", function (req, res) {
 });
 
 // Handle incoming messages
-app.post('/webhook', (req, res) => {
-  console.log(req.body);
+app.post("/webhook", (req, res) => {
+  console.log(
+    "webhook called with body",
+    req.body.entry[0].changes[0].value.messages
+  );
 
   if (req.body.object === "whatsapp_business_account") {
     req.body.entry.forEach(entry => {
@@ -70,18 +76,18 @@ app.post('/webhook', (req, res) => {
     });
   }
 
-  res.status(200).send('EVENT_RECEIVED');
+  res.status(200).send("EVENT_RECEIVED");
 });
 
 // Default route for health check
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.json({
-    message: 'Jasper\'s Market Server is running',
-    endpoints: [
-      'POST /webhook - WhatsApp webhook endpoint'
-    ]
+    message: "Jasper's Market Server is running",
+    endpoints: ["POST /webhook - WhatsApp webhook endpoint"]
   });
 });
+
+app.use("/test", testRouter);
 
 // Check if all environment variables are set
 config.checkEnvVariables();
@@ -104,7 +110,6 @@ function verifyRequestSignature(req, res, buf) {
     }
   }
 }
-
 
 var listener = app.listen(config.port, () => {
   console.log(`The app is listening on port ${listener.address().port}`);
